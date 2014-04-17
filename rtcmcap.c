@@ -17,9 +17,10 @@
 volatile unsigned char stop = 0;
 struct termios term_settings, orig_term_settings;
 
-int rcvr_port_open() {
+int rcvr_port_open()
+{
 	int fd;
-    fd = open(RTCMDEVICE, O_RDONLY | O_NOCTTY );
+	fd = open(RTCMDEVICE, O_RDONLY | O_NOCTTY );
 	if (fd <0) {
 		perror(RTCMDEVICE);
 		exit(-1);
@@ -30,7 +31,7 @@ int rcvr_port_open() {
 	term_settings.c_iflag = IGNPAR;
 	term_settings.c_oflag = 0;
 	term_settings.c_lflag = 0;
-	
+
 	term_settings.c_cc[VTIME] = 10; /* Port timeout 1 second */
 	term_settings.c_cc[VMIN] = 1;
 
@@ -39,7 +40,8 @@ int rcvr_port_open() {
 	return fd;
 }
 
-int rcvr_port_close(int fd) {
+int rcvr_port_close(int fd)
+{
 	tcsetattr(fd, TCSANOW, &orig_term_settings);
 	return close(fd);
 }
@@ -86,30 +88,25 @@ unsigned char * receive(unsigned char *buf, int fd)
 					} else {
 						; /* Unknown error */
 					}
-				}
-				else if (nread == 0) {
+				} else if (nread == 0) {
 					break; /* EOF */
-				}
-				else {
-					i++;			
+				} else {
+					i++;
 				}
 			}
 			rcvd_msg_len = i;
 			printf("Received Message:");
-			for (unsigned j = 0; j < rcvd_msg_len; j++)
-			{
-    			if (j > 0) printf(",");
-    			printf("%02X", buf[j]);
+			for (unsigned j = 0; j < rcvd_msg_len; j++) {
+				if (j > 0) printf(",");
+				printf("%02X", buf[j]);
 			}
 			printf("\nLength: %u\n",rcvd_msg_len);
 		}
-	}
-	else if (nread == 0) {
+	} else if (nread == 0) {
 		printf("Receiver on %s is not alive", RTCMDEVICE);
 		rcvr_port_close(fd);
 		exit(-1);
-	} 
-	else {
+	} else {
 		; //Error
 	}
 	return buf;
