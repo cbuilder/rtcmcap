@@ -1,8 +1,8 @@
 CC=gcc
-CFLAGS= -std=c99 -O2 -pedantic -Wall -I.
+CFLAGS= -ggdb -std=c99 -O2 -pedantic -Wall -I.
 
-rtcmcap: rtcmcap.o
-	$(CC) -o rtcmcap rtcmcap.o $(CFLAGS)
+rtcmcap: rtcmcap.o receiver.o sender.o facility.o
+	$(CC) -o rtcmcap rtcmcap.o receiver.o sender.o facility.o $(CFLAGS)
 
 clean:
 	rm -f *.o
