@@ -27,7 +27,8 @@ int main()
     log_file = stdout;
     debug_file = stdout;
     int nbytes;
-    unsigned char rtcm_frame_buf[FRAME_BUF_SZ];
+    unsigned char rtcm_rcv_buf[RCV_BUF_SZ];
+
     if (signal(SIGINT, exit_condition_handler) == SIG_ERR)
         p_errno(log_file, "Redirect terminal interrupt signal");
 
@@ -39,9 +40,10 @@ int main()
         exit(EXIT_FAILURE);
 
     while(!stop) {
-        nbytes = receive_rtcm(rtcm_frame_buf, rtcm_stream_fd);
+        nbytes = receive_rtcm(rtcm_rcv_buf, rtcm_stream_fd);
         if (nbytes > 0)
-            nbytes = send_to_client(udp_socket_fd, rtcm_frame_buf, nbytes);
+            nbytes = send_within_protobuf(udp_socket_fd,
+                                            rtcm_rcv_buf, nbytes);
     }
 
     rcvr_port_close(rtcm_stream_fd);

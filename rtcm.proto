@@ -1,0 +1,3 @@
+message Rtcm2Message {
+  required bytes msg = 1;
+}
