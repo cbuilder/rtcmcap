@@ -13,7 +13,6 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include "rtcmcap.h"
-#include "receiver.h"
 #include "facility.h"
 
 extern FILE * log_file, *debug_file;
