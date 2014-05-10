@@ -11,3 +11,4 @@
 #define RCV_BUF_SZ	256
 #define CLIENT_IPADDR "192.168.2.1"
 #define CLIENT_PORT "12345"
+#define RECIPIENTS_LIST "/etc/rtcmcap/recipients.list"

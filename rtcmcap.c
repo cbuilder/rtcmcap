@@ -35,18 +35,18 @@ int main()
     int rtcm_stream_fd = rcvr_port_open();
     if (rtcm_stream_fd == -1) 
         exit(EXIT_FAILURE);
-    int udp_socket_fd = sock_create();
-    if (udp_socket_fd == -1)
+
+    int recipients_number = transmition_init(RECIPIENTS_LIST);
+    if (recipients_number <= 0)
         exit(EXIT_FAILURE);
 
     while(!stop) {
         nbytes = receive_rtcm(rtcm_rcv_buf, rtcm_stream_fd);
         if (nbytes > 0)
-            nbytes = send_within_protobuf(udp_socket_fd,
-                                            rtcm_rcv_buf, nbytes);
+            send_within_protobuf(rtcm_rcv_buf, nbytes);
     }
 
     rcvr_port_close(rtcm_stream_fd);
-    sock_close(udp_socket_fd);
+    transmition_stop();
     exit(EXIT_SUCCESS);
 }

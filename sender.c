@@ -31,44 +31,85 @@ struct recipient {
 };
 
 extern FILE * log_file, *debug_file;
-struct recipient peer;
+struct recipient *peer;
+int sfd;
+int nrcpnts = 0;
 
-int sock_create()
+int transmition_init(char *recipients_list_filename)
 {
+    FILE * rcpnts_list = fopen(recipients_list_filename, "r");
+    if (rcpnts_list == NULL) {
+        p_errno(log_file, "Opening recipients list");
+        return -1;
+    }
+    
     static struct addrinfo hints;
-    struct addrinfo *result, *rp;
     memset(&hints, 0, sizeof(struct addrinfo));
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_DGRAM;
     hints.ai_flags = 0;
     hints.ai_protocol = IPPROTO_UDP;
     hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV;
-// for:
-    int s = getaddrinfo(CLIENT_IPADDR, CLIENT_PORT, &hints, &result);
-    if (s != 0) {
-        fprintf(log_file, "getaddrinfo: %s\n", gai_strerror(s));
-        return -1;
+    const int rcpnt_line_len = NI_MAXHOST + NI_MAXSERV + 2;
+    char rcpnt_line[rcpnt_line_len];
+    char * pserv;
+    char * delim;
+    int s;
+    char hostname[NI_MAXHOST];
+    char servname[NI_MAXSERV];
+    size_t hostname_len;
+    struct addrinfo *ai_result;
+    struct addrinfo ai_list_head;
+    struct addrinfo *ai_list_iter;
+    ai_list_iter = &ai_list_head;
+    /* resolve addresses, count and build linked list */
+    while (fgets(rcpnt_line, rcpnt_line_len, rcpnts_list) != NULL)
+    {
+        delim = strchr(rcpnt_line, ':');
+        hostname_len = delim - rcpnt_line;
+        strncpy(hostname, rcpnt_line, hostname_len);
+        pserv = delim + 1;
+        strncpy(servname, pserv, strlen(pserv) - 1);
+        fprintf(debug_file, "sender: processing recipient name %s:%s... ",
+                hostname, servname);
+        s = getaddrinfo(hostname, servname, &hints, &ai_result);
+        if (s == 0) {
+            ai_list_iter->ai_next = ai_result;
+            ai_list_iter = ai_list_iter->ai_next;    
+            nrcpnts++;
+            fprintf(debug_file, "OK\n");
+        }
+        else {
+            fprintf(log_file, "getaddrinfo: %s\n", gai_strerror(s));
+        }
     }
-    for (rp = result; rp != NULL; rp = rp->ai_next) {
-        memset(&peer, 0, sizeof(struct recipient));
-        memcpy(&peer.addr, rp->ai_addr, rp->ai_addrlen);
-        peer.addr_len = rp->ai_addrlen;
+    fprintf(debug_file, "sender: in sum total %d recipients found\n", nrcpnts);
+    /* Allocate array and fulfill it with recipients */
+    peer = calloc(nrcpnts, sizeof(struct recipient));
+    memset(peer, 0, nrcpnts * sizeof(struct recipient));
+    ai_list_iter = ai_list_head.ai_next;
+    for (int i = 0; i < nrcpnts; i++)
+    {
+        memcpy(&peer[i].addr, ai_list_iter->ai_addr, ai_list_iter->ai_addrlen);
+        peer[i].addr_len = ai_list_iter->ai_addrlen;
+        ai_list_iter = ai_list_iter->ai_next;
     }
-    freeaddrinfo(result);
-    
-    int sfd = socket(hints.ai_family, hints.ai_socktype, hints.ai_protocol);
+    freeaddrinfo(ai_list_head.ai_next);
+
+    sfd = socket(hints.ai_family, hints.ai_socktype, hints.ai_protocol);
     if (sfd == -1) {
         p_errno(log_file, "Create socket");
     }
-    return sfd;
+    return nrcpnts;
 }
 
-void sock_close(int sfd)
+void transmition_stop()
 {
+    free(peer);
     close(sfd);
 }
 
-int send_within_protobuf(int sfd, unsigned char *rtcm_rcv_buf, int nbytes)
+int send_within_protobuf(unsigned char *rtcm_rcv_buf, int nbytes)
 {
     unsigned int pb_datalen;
     void *pb_databuf;
@@ -89,26 +130,28 @@ int send_within_protobuf(int sfd, unsigned char *rtcm_rcv_buf, int nbytes)
     rtcm2_message__pack(&pb_rtcm_msg, pb_databuf);
     fprintf(debug_file, "sender: %d bytes message in protobuf\n", pb_datalen);
     
-    int bytes_sent = sendto(sfd, pb_databuf, pb_datalen, 0,
-                (struct sockaddr *)&peer.addr, peer.addr_len);
-    if (bytes_sent == -1)
-        p_errno(log_file, "sendto");
- 
+    int s;
+    int bytes_sent = 0;
     char host[NI_MAXHOST], service[NI_MAXSERV];
-    int s = getnameinfo((struct sockaddr *) &peer.addr,
-                        peer.addr_len, host, NI_MAXHOST,
+    for (int i = 0; i < nrcpnts; i++)
+    {
+        bytes_sent = sendto(sfd, pb_databuf, pb_datalen, 0,
+                (struct sockaddr *)&peer[i].addr, peer[i].addr_len);
+        if (bytes_sent == -1)
+            p_errno(log_file, "sendto");
+        s = getnameinfo((struct sockaddr *) &peer[i].addr,
+                        peer[i].addr_len, host, NI_MAXHOST,
                         service, NI_MAXSERV,
                         NI_NUMERICHOST || NI_NUMERICSERV);
-    if (s == 0)
-        fprintf(debug_file, "sender: %ld bytes sent to %s:%s UDP\n",
+        if (s == 0)
+            fprintf(debug_file, "sender: %ld bytes sent to %s:%s UDP\n",
                         (long)bytes_sent, host, service);
-    else
-        fprintf(log_file, "getnameinfo: %s\n", gai_strerror(s));
-
+        else
+            fprintf(log_file, "getnameinfo: %s\n", gai_strerror(s));
+    }
     free(pb_rtcm_msg.msg.data);
     pb_rtcm_msg.msg.data = NULL;
     free(pb_databuf);
     pb_databuf = NULL;
-    
     return bytes_sent;
 }
