@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-std=c99 -O2 -pedantic -Wall -I.
+CFLAGS=-std=c99 -D_POSIX_SOURCE -O2 -pedantic -Wall -I.
 LDFLAGS=-lprotobuf-c
 
 all: rtcmcap
