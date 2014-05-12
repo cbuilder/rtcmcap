@@ -15,7 +15,6 @@
 #include <errno.h>
 #include <string.h>
 #include "rtcmcap.h"
-#include "facility.h"
 #include "rtcm.pb-c.h"
 
 #ifndef NI_MAXHOST
@@ -70,20 +69,20 @@ int transmition_init(char *recipients_list_filename)
         strncpy(hostname, rcpnt_line, hostname_len);
         pserv = delim + 1;
         strncpy(servname, pserv, strlen(pserv) - 1);
-        fprintf(debug_file, "sender: processing recipient name %s:%s... ",
+        p_msg(debug_file, "sender: processing recipient name %s:%s... ",
                 hostname, servname);
         s = getaddrinfo(hostname, servname, &hints, &ai_result);
         if (s == 0) {
             ai_list_iter->ai_next = ai_result;
             ai_list_iter = ai_list_iter->ai_next;    
             nrcpnts++;
-            fprintf(debug_file, "OK\n");
+            p_msg(debug_file, "OK\n");
         }
         else {
-            fprintf(log_file, "getaddrinfo: %s\n", gai_strerror(s));
+            p_msg(log_file, "getaddrinfo: %s\n", gai_strerror(s));
         }
     }
-    fprintf(debug_file, "sender: in sum total %d recipients found\n", nrcpnts);
+    p_msg(log_file, "sender: in sum total %d recipients found\n", nrcpnts);
     /* Allocate array and fulfill it with recipients */
     peer = calloc(nrcpnts, sizeof(struct recipient));
     memset(peer, 0, nrcpnts * sizeof(struct recipient));
@@ -128,7 +127,7 @@ int send_within_protobuf(unsigned char *rtcm_rcv_buf, int nbytes)
         return 0;
     }  
     rtcm2_message__pack(&pb_rtcm_msg, pb_databuf);
-    fprintf(debug_file, "sender: %d bytes message in protobuf\n", pb_datalen);
+    p_msg(debug_file, "sender: %d bytes message in protobuf\n", pb_datalen);
     
     int s;
     int bytes_sent = 0;
@@ -144,10 +143,10 @@ int send_within_protobuf(unsigned char *rtcm_rcv_buf, int nbytes)
                         service, NI_MAXSERV,
                         NI_NUMERICHOST || NI_NUMERICSERV);
         if (s == 0)
-            fprintf(debug_file, "sender: %ld bytes sent to %s:%s UDP\n",
+            p_msg(debug_file, "sender: %ld bytes sent to %s:%s UDP\n",
                         (long)bytes_sent, host, service);
         else
-            fprintf(log_file, "getnameinfo: %s\n", gai_strerror(s));
+            p_msg(log_file, "getnameinfo: %s\n", gai_strerror(s));
     }
     free(pb_rtcm_msg.msg.data);
     pb_rtcm_msg.msg.data = NULL;

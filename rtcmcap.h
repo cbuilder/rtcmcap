@@ -9,6 +9,9 @@
 #define RTCM2_PREAMBLE	0x66
 #define UNKNOWN_PREAMBLE	0x59
 #define RCV_BUF_SZ	256
-#define CLIENT_IPADDR "192.168.2.1"
-#define CLIENT_PORT "12345"
 #define RECIPIENTS_LIST "/etc/rtcmcap/recipients.list"
+#define LOG_FILE "/var/log/rtcmcap/rtcmcap.log"
+
+void p_current_time(FILE *fd);
+void p_errno(FILE *fd, const char *format, ...);
+void p_msg(FILE *fd, const char *format, ...);

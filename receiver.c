@@ -13,7 +13,6 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include "rtcmcap.h"
-#include "facility.h"
 
 extern FILE * log_file, *debug_file;
 static struct termios term_settings, orig_term_settings;
@@ -61,7 +60,7 @@ int rcvr_port_close(int fd)
 
 static void line_activity_timeout_handler()
 {
-    fprintf(log_file, "The receiver on %s keeps calm\n", RTCMDEVICE);
+    p_msg(log_file, "The receiver on %s keeps calm\n", RTCMDEVICE);
     sleep(5);
 }
 
@@ -88,7 +87,7 @@ int receive_rtcm(unsigned char *buf, int fd)
             p_errno(log_file, "Read from %s", RTCMDEVICE);
     }
     else if (nread == 0)
-        fprintf(log_file, "Achtung! Keine bytes bekommt aus %s!", RTCMDEVICE);
+        p_msg(log_file, "Achtung! Keine bytes bekommt aus %s!", RTCMDEVICE);
     else {
         getitimer(ITIMER_REAL, &curr_iti);
         unsigned long usec_elapsed_from_pream_rcv =
@@ -96,12 +95,12 @@ int receive_rtcm(unsigned char *buf, int fd)
              + (unsigned long)pream_rcv_iti.it_value.tv_usec)
             - ((unsigned long)curr_iti.it_value.tv_sec * 1000000
                + (unsigned long)curr_iti.it_value.tv_usec);
-        fprintf(debug_file, "receiver: %ld usec elapsed from last message\n",
+        p_msg(debug_file, "receiver: %ld usec elapsed from last message\n",
                 usec_elapsed_from_pream_rcv);
         if (setitimer(ITIMER_REAL, &disable_iti, NULL) == -1)
             p_errno(log_file, "Stop itimer");
         if (usec_elapsed_from_pream_rcv < 500)
-            fprintf(debug_file, "receiver: waiting more for the beginning\n");
+            p_msg(debug_file, "receiver: waiting more for the beginning\n");
         else {
             if (buf[0] == RTCM2_PREAMBLE || buf[0] == UNKNOWN_PREAMBLE) {
                 unsigned int i = 1;
@@ -121,7 +120,7 @@ int receive_rtcm(unsigned char *buf, int fd)
                             p_errno(log_file, "Read from %s", RTCMDEVICE);
                     }
                     else if (nread == 0) {
-                        fprintf(log_file, "Read from %s reached EOF\n",
+                        p_msg(log_file, "Read from %s reached EOF\n",
                                 RTCMDEVICE);
                         break;
                     }
@@ -129,12 +128,14 @@ int receive_rtcm(unsigned char *buf, int fd)
                         i++; /* Continue to receive message */
                 } /* End of message receive cycle */
                 msg_length = i;
-                fprintf(debug_file, "receiver: got message ");
+#ifndef DEBUG
+                p_msg(debug_file, "receiver: got message ");
                 for (unsigned j = 0; j < msg_length; j++) {
-                    if (j > 0) printf(",");
-                    printf("%02X", buf[j]);
+                    if (j > 0) fprintf(debug_file, ",");
+                    fprintf(debug_file, "%02X", buf[j]);
                 }
                 fprintf(debug_file, "; length: %u\n", msg_length);
+#endif
             }
         }
     }
