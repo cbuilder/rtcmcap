@@ -60,11 +60,6 @@ int main()
 #if defined DEBUG
     log_file = stdout;
     debug_file = stdout;
-#elif defined DEBUG_TO_LOG
-    log_file = fopen(LOG_FILE, "w");
-    if (log_file == NULL)
-        p_errno(stdout, "log file opening");
-    debug_file = log_file;
 #else
     log_file = fopen(LOG_FILE, "w");
     if (log_file == NULL)

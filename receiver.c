@@ -23,7 +23,7 @@ static const struct itimerval pream_rcv_iti = {
 };
 static const struct itimerval msg_rcv_iti = {
         .it_interval = { 0, 0 },
-        .it_value = {0, 500},
+        .it_value = {0, 5000},
 };
 static const struct itimerval disable_iti = {
         .it_interval = { 0, 0 },
@@ -128,14 +128,12 @@ int receive_rtcm(unsigned char *buf, int fd)
                         i++; /* Continue to receive message */
                 } /* End of message receive cycle */
                 msg_length = i;
-#ifndef DEBUG
                 p_msg(debug_file, "receiver: got message ");
                 for (unsigned j = 0; j < msg_length; j++) {
                     if (j > 0) fprintf(debug_file, ",");
                     fprintf(debug_file, "%02X", buf[j]);
                 }
                 fprintf(debug_file, "; length: %u\n", msg_length);
-#endif
             }
         }
     }
